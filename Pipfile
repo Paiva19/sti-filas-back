@@ -11,6 +11,7 @@ sqlalchemy = "*"
 flask-cors = "*"
 flask-sqlalchemy = "*"
 flask-marshmallow = "*"
+gunicorn = "*"
 
 [requires]
 python_version = "3.7"
