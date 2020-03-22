@@ -69,7 +69,7 @@ class Atracao(db.Model): # Deve ser apenas da Plataforma
     idEvento = db.Column(db.Integer, db.ForeignKey('eventos.idEvento'),nullable=False)
     waitingVisitors = db.relationship('Espera', backref='atracoes', lazy=True)
 
-
+    cupons = db.relationship('Cupom', backref='atracoes', lazy=True)
     
     def __init__(self, nomeAtracao, quantPessoas, tempoAtracao, vazaoAtracao, dataAtracao, idEvento):
         self.nomeAtracao = nomeAtracao
@@ -140,6 +140,67 @@ class Espera(db.Model):
         }
         return response
 
+class Evento(db.Model): # Deve estar apenas na Plataforma
+    __tablename__ = 'eventos'
+
+    idEvento = db.Column(db.Integer, primary_key=True)
+    nomeEvento = db.Column(db.String(80))
+    localEvento = db.Column(db.String(30))
+    horaInicioEvento = db.Column(db.String, default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    horaTerminoEvento = db.Column(db.String, default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    precoIngresso = db.Column(db.String(10))
+    lines = db.relationship('Atracao', backref='eventos', lazy=True)
+
+
+    def __init__(self, nomeEvento, localEvento, horaInicioEvento, horaTerminoEvento, precoIngresso, lines):
+        self.nomeEvento = nomeEvento
+        self.localEvento = localEvento
+        self.horaInicioEvento = horaInicioEvento
+        self.horaTerminoEvento = horaTerminoEvento
+        self.precoIngresso = precoIngresso
+        self.lines = lines
+
+    def to_dict(self):
+        response = {
+            "idEvento": self.idEvento,
+            "nomeEvento": self.nomeEvento,
+            "localEvento": self.localEvento,
+            "horaInicioEvento": self.horaInicioEvento,
+            "horaTerminoEvento": self.horaTerminoEvento,
+            "precoIngresso": self.precoIngresso,
+            "lines": self.lines
+        }
+        return response
+
+
+class Cupom(db.Model):
+    idCupom = Column(Integer, primary_key=True)
+    nomeCupom = db.Column(db.String(50), unique=False)
+    descricao = db.Column(db.String(500), unique=False)
+    quantidade = db.Column(db.String(50), unique=False)
+    desconto = db.Column(db.String(3), unique=False)
+    validade = db.Column(db.String(50), unique=False)#(DateTime, default=datetime.datetime.utcnow)
+
+    idAtracao = db.Column(db.Integer, db.ForeignKey('atracoes.idAtracao'),nullable=False)
+    
+
+    def __init__(self, nomeCupom, descricao, quantidade, desconto, validade):
+        self.nomeCupom = nomeCupom
+        self.descricao = descricao
+        self.quantidade = quantidade
+        self.desconto = desconto
+        self.validade = validade
+    
+    def toDict(self):
+        response = {
+            "idCupom": self.idCupom,
+            "nomeCupom": self.nomeCupom,
+            "descricao": self.descricao,
+            "quantidade": self.quantidade,
+            "desconto": self.desconto,
+            "validade": self.validade
+        }
+        return response
 
 
 
@@ -171,6 +232,13 @@ class EsperaSchema(ma.Schema):
         fields = ('idAtracao', 'idVisitante', 'horaEntrada', 'horaChamada', 'checkIn')
 espera_schema = EsperaSchema()
 esperas_schema = EsperaSchema(many=True)
+
+class CupomSchema(ma.Schema):
+    class Meta:
+        #Fields to expose
+        fields = ('idCupom', 'nomeCupom', 'descricao', 'quantidade', 'desconto', 'validade', 'idAtracao')
+cupom_schema = CupomSchema()
+cupons_schema = CupomSchema(many=True)
 
 ################################################## R O U T E S ##################################################
 
@@ -372,6 +440,35 @@ def espera_check_in():
                 db.session.commit()
                 return espera_schema.jsonify(espera)
             else: 'Visitante está em outra fila!', 400
+
+# endpoint to distribute a coupon
+@app.route("/cupom/distribuir_cupom", methods=["POST"])
+def distribuir_cupom():
+
+    nomeCupom = request.json['nomeCupom']
+    descricaoCupom = request.json["descricao"]
+    quantidade = request.json["quantidade"]
+    desconto = request.json["desconto"]
+    validade = request.json["validade"]
+    idAtracao = request.json["idAtracao"]
+
+    new_cupom = Cupom(nomeCupom, descricao, quantidade, desconto, validade, idAtracao)
+    db.session.add(new_cupom)
+    bd.session.commit()
+    response = new_cupom.toDict()
+    return response
+
+
+# endpoint to get valid coupons detail by attraction id
+@app.route("/cupom/<idAtracao>", methods=["GET"])
+def visitante_detail(idAtracao):
+    cupons = Cupom.query.filter_by(idAtracao = idAtracao).filter_by(datetime.now().strftime("%Y-%m-%d %H:%M:%S") < validade)
+
+    dict_result = {}
+    for entry in cupons:
+        cupom_dict = entry.to_dict()
+        dict_result[cupom_dict['idCupom']] = cupom_dict
+    return json.loads(json.dumps(dict_result))
 
 ############################################################################################################
 if __name__ == '__main__':
