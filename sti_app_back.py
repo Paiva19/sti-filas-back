@@ -14,7 +14,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'crud.sqlite')
 db = SQLAlchemy(app)
 # Create the database tables.
-db.create_all()s
+db.create_all()
 ma = Marshmallow(app)
 ################################################## M O D E L S ##################################################
 
@@ -137,38 +137,6 @@ class Espera(db.Model):
             "idAtracao": self.idAtracao,
             "idVisitante": self.idVisitante,
             "horaChamada": self.idAtracao
-        }
-        return response
-
-class Evento(db.Model): # Deve estar apenas na Plataforma
-    __tablename__ = 'eventos'
-
-    idEvento = db.Column(db.Integer, primary_key=True)
-    nomeEvento = db.Column(db.String(80))
-    localEvento = db.Column(db.String(30))
-    horaInicioEvento = db.Column(db.String, default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    horaTerminoEvento = db.Column(db.String, default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    precoIngresso = db.Column(db.String(10))
-    lines = db.relationship('Atracao', backref='eventos', lazy=True)
-
-
-    def __init__(self, nomeEvento, localEvento, horaInicioEvento, horaTerminoEvento, precoIngresso, lines):
-        self.nomeEvento = nomeEvento
-        self.localEvento = localEvento
-        self.horaInicioEvento = horaInicioEvento
-        self.horaTerminoEvento = horaTerminoEvento
-        self.precoIngresso = precoIngresso
-        self.lines = lines
-
-    def to_dict(self):
-        response = {
-            "idEvento": self.idEvento,
-            "nomeEvento": self.nomeEvento,
-            "localEvento": self.localEvento,
-            "horaInicioEvento": self.horaInicioEvento,
-            "horaTerminoEvento": self.horaTerminoEvento,
-            "precoIngresso": self.precoIngresso,
-            "lines": self.lines
         }
         return response
 
@@ -461,7 +429,7 @@ def distribuir_cupom():
 
 # endpoint to get valid coupons detail by attraction id
 @app.route("/cupom/<idAtracao>", methods=["GET"])
-def visitante_detail(idAtracao):
+def cupons_por_fila(idAtracao):
     cupons = Cupom.query.filter_by(idAtracao = idAtracao).filter_by(datetime.now().strftime("%Y-%m-%d %H:%M:%S") < validade)
 
     dict_result = {}
